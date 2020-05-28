@@ -1,27 +1,68 @@
-# TSDX Bootstrap
+# js-smp-peer
 
-This project was bootstrapped with [TSDX](https://github.com/jaredpalmer/tsdx).
+`js-smp-peer` lets you run [SMP(Socialist Millionaire Problem) Protocol][smp_paper] with other users through the network connections. Check out the [wiki page][smp_wiki] to know more about SMP, and also the [paper][smp_paper] to understand the solution.
 
-## Local Development
+Advantages using `js-smp-peer`
+- Privacy: With SMP Protocol, users can compare their **secrets** without leaking any information. SMP Protocol implementation can be found in [`js-smp`][js_smp].
+- One-step connection establishment: A peer-to-peer connection is established for each run of SMP Protocol. Users don't need to worry about the annoying NAT traversals and other issues. They are handled by [`PeerJS`][peerjs], which utilizes [WebRTC][webrtc].
 
-Below is a list of commands you will probably find useful.
+## Setup
+Install the library with npm
+```bash
+npm install js-smp-peer
+```
 
-### `npm start` or `yarn start`
+## Usage
 
-Runs the project in development/watch mode. Your project will be rebuilt upon changes. TSDX has a special logger for you convenience. Error messages are pretty printed and formatted for compatibility VS Code's Problems tab.
+### SMPPeer
+`SMPPeer` is the core logic of `js-smp-peer`. It can initiate SMP requests and handle the ones from other users.
 
-<img src="https://user-images.githubusercontent.com/4060187/52168303-574d3a00-26f6-11e9-9f3b-71dbec9ebfcb.gif" width="600" />
+### Peer server
+A Peer server makes the peers capable of discovering each others and exchanging necessary data used to establish WebRTC connections. We use [`PeerServer`][peerjs_server] which is supported by [`PeerJS`][peerjs]. Check out [`PeerServer`][peerjs_server] for more information.
 
-Your library will be rebuilt if you make edits.
+#### Connecting to the peer server and run SMP with a peer
+```typescript
+import SMPPeer from 'js-smp-peer';
 
-### `npm run build` or `yarn build`
+async function main() {
+    // Secret is a plain string.
+    const secret: string = 'my-secret';
+    // Peer ID is the entity of you. It's a plain string as well.
+    const peerID: string = 'my-peer-id';
+    // Initialize a `SMPPeer`.
+    const peer = new SMPPeer(secret, peerID);
+    // Or you can omit `peerID`. The peer server will choose a uuid when connected to it.
+    const peer = new SMPPeer(secret);
 
-Bundles the package to the `dist` folder.
-The package is optimized and bundled with Rollup into multiple formats (CommonJS, UMD, and ES Module).
+    // Connect to the peer server, to contact or be contacted with the other peers.
+    await peer.connectToPeerServer();
 
-<img src="https://user-images.githubusercontent.com/4060187/52168322-a98e5b00-26f6-11e9-8cf6-222d716b75ef.gif" width="600" />
+    // Run SMP with the peer whose id is "another-peer".
+    const anotherPeer = 'another-peer';
+    const result: boolean = await peer.runSMP(anotherPeer);
+    console.log(`Finished running SMP with peer ${anotherPeer}, result=${result}`);
+}
 
-### `npm test` or `yarn test`
+main();
+```
 
-Runs the test watcher (Jest) in an interactive mode.
-By default, runs tests related to files changed since the last commit.
+#### Use a custom peer server
+
+By default, `SMPPeer` connects to the server specified in `defaultPeerConfig` in `src/config.ts`. You can connect to other peer servers by specifying a config when initializing `SMPPeer`.
+
+```typescript
+const customConfig = {
+  host: 'my-server'
+  port: 5566,
+  path: '/myapp',
+  secure: true,
+};
+const peer = new SMPPeer(secret, peerID, customConfig);
+```
+
+[peerjs]: https://github.com/peers/peerjs
+[peerjs_server]: https://github.com/peers/peerjs-server
+[smp_wiki]: https://en.wikipedia.org/wiki/Socialist_millionaires
+[smp_paper]: https://www.win.tue.nl/~berry/papers/dam.pdf
+[js_smp]: https://github.com/mhchia/js-smp
+[webrtc]: https://webrtc.org
