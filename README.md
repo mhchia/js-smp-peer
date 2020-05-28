@@ -1,10 +1,10 @@
 # js-smp-peer
 
-`js-smp-peer` lets you run [SMP(Socialist Millionaire Problem) Protocol][smp_paper] with other users through the network connections. Check out the [wiki page][smp_wiki] to know more about SMP, and also the [paper][smp_paper] to understand the solution.
+`js-smp-peer` lets you run [SMP(Socialist Millionaire Problem) Protocol][smp_paper] with other users through network connections. Check out the [wiki page][smp_wiki] to know more about SMP, and also the [paper][smp_paper] to understand the protocol.
 
-Advantages using `js-smp-peer`
+Advantages of using `js-smp-peer`:
 - Privacy: With SMP Protocol, users can compare their **secrets** without leaking any information. SMP Protocol implementation can be found in [`js-smp`][js_smp].
-- One-step connection establishment: A peer-to-peer connection is established for each run of SMP Protocol. Users don't need to worry about the annoying NAT traversals and other issues. They are handled by [`PeerJS`][peerjs], which utilizes [WebRTC][webrtc].
+- Connection establishment at ease: A peer-to-peer connection is established for each run of SMP Protocol. Users don't need to worry about the annoying NAT traversals and other issues. They are handled by [`PeerJS`][peerjs], which utilizes [WebRTC][webrtc].
 
 ## Setup
 Install the library with npm
@@ -12,15 +12,17 @@ Install the library with npm
 npm install js-smp-peer
 ```
 
-## Usage
+## Components
 
 ### SMPPeer
-`SMPPeer` is the core logic of `js-smp-peer`. It can initiate SMP requests and handle the ones from other users.
+`SMPPeer` is the core of `js-smp-peer`. It can initiate SMP requests and handle the requests from others.
 
 ### Peer server
 A Peer server makes the peers capable of discovering each others and exchanging necessary data used to establish WebRTC connections. We use [`PeerServer`][peerjs_server] which is supported by [`PeerJS`][peerjs]. Check out [`PeerServer`][peerjs_server] for more information.
 
-#### Connecting to the peer server and run SMP with a peer
+## Usage
+
+### Connect to the default peer server and run SMP with a peer
 ```typescript
 import SMPPeer from 'js-smp-peer';
 
@@ -32,7 +34,7 @@ async function main() {
     // Initialize a `SMPPeer`.
     const peer = new SMPPeer(secret, peerID);
     // Or you can omit `peerID`. The peer server will choose a uuid when connected to it.
-    const peer = new SMPPeer(secret);
+    // const peer = new SMPPeer(secret);
 
     // Connect to the peer server, to contact or be contacted with the other peers.
     await peer.connectToPeerServer();
@@ -46,7 +48,7 @@ async function main() {
 main();
 ```
 
-#### Use a custom peer server
+### Use a custom peer server
 
 By default, `SMPPeer` connects to the server specified in `defaultPeerConfig` in `src/config.ts`. You can connect to other peer servers by specifying a config when initializing `SMPPeer`.
 
@@ -57,6 +59,8 @@ const customConfig = {
   path: '/myapp',
   secure: true,
 };
+
+// Connect to the custom peer server.
 const peer = new SMPPeer(secret, peerID, customConfig);
 ```
 
