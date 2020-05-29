@@ -2,15 +2,11 @@
 // we need to override `constructor` to set prototype for each error.
 //  - https://github.com/Microsoft/TypeScript/issues/13965
 //  - https://github.com/Microsoft/TypeScript/wiki/Breaking-Changes#extending-built-ins-like-error-array-and-map-may-no-longer-work
-class BasePeekABookError extends Error {
-  constructor(m?: string) {
-    super(m);
-    // Set the prototype explicitly.
-    Object.setPrototypeOf(this, BasePeekABookError.prototype);
-  }
-}
 
-class SMPPeerError extends BasePeekABookError {
+/**
+ * The base error for `SMPPeer`.
+ */
+class SMPPeerError extends Error {
   constructor(m?: string) {
     super(m);
     // Set the prototype explicitly.
@@ -18,6 +14,9 @@ class SMPPeerError extends BasePeekABookError {
   }
 }
 
+/**
+ * Thrown when we are not connected to the peer server.
+ */
 class ServerUnconnected extends SMPPeerError {
   constructor(m?: string) {
     super(m);
@@ -26,4 +25,12 @@ class ServerUnconnected extends SMPPeerError {
   }
 }
 
-export { SMPPeerError, ServerUnconnected };
+class ServerFault extends SMPPeerError {
+  constructor(m?: string) {
+    super(m);
+    // Set the prototype explicitly.
+    Object.setPrototypeOf(this, ServerFault.prototype);
+  }
+}
+
+export { SMPPeerError, ServerUnconnected, ServerFault };

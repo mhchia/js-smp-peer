@@ -1,6 +1,6 @@
-type TPeerConfig = { host: string; port: number; path: string; secure: boolean; debug?: number };
+type TPeerServerConfig = { host: string; port: number; path: string; secure: boolean; debug?: number };
 
-const defaultPeerConfig: TPeerConfig = {
+const defaultPeerServerConfig: TPeerServerConfig = {
   host: 'peekabookpeerserver.mhchia.com', // Our self-deployed peerjs-server
   port: 8000,
   path: '/myapp',
@@ -8,4 +8,4 @@ const defaultPeerConfig: TPeerConfig = {
   debug: 3, // Log more for debugging
 };
 
-export { defaultPeerConfig, TPeerConfig };
+export { defaultPeerServerConfig, TPeerServerConfig };

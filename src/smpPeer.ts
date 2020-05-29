@@ -3,8 +3,8 @@ import Peer from 'peerjs';
 import { SMPStateMachine } from 'js-smp';
 import { TLV } from 'js-smp/lib/msgs';
 
-import { defaultPeerConfig } from './config';
-import { ServerUnconnected } from './exceptions';
+import { defaultPeerServerConfig, TPeerServerConfig } from './config';
+import { ServerUnconnected, ServerFault } from './exceptions';
 
 const timeSleep = 10;
 
@@ -23,6 +23,10 @@ function createConnDataHandler(stateMachine: SMPStateMachine, conn: Peer.DataCon
 
 const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
+/**
+ * Wait until `SMPStateMachine` is at the finished state.
+ * TODO: Add timeout to avoid infinite waiting.
+ */
 async function waitUntilStateMachineFinished(stateMachine: SMPStateMachine): Promise<void> {
   while (!stateMachine.isFinished()) {
     await sleep(timeSleep);
@@ -34,19 +38,45 @@ class SMPPeer {
 
   private peer?: Peer;
 
-  constructor(secret: string, readonly localPeerID?: string, readonly peerConfig = defaultPeerConfig) {
+  /**
+   * @param secret - The secret which will be used to run SMP protocol with the remote peer
+   * @param localPeerID - Our peer id. We will "register" our peer id on the peer server later
+   *  when calling `connectToPeerServer`.
+   * @param peerServerConfig - The information of the peer server. `defaultPeerServerConfig` is
+   *  used if this parameter is not supplied.
+   */
+  constructor(
+    secret: string,
+    readonly localPeerID?: string,
+    readonly peerServerConfig: TPeerServerConfig = defaultPeerServerConfig)
+  {
     this.secret = secret;
   }
 
+  /**
+   * @returns Our peer id.
+   * @throws `ServerUnconnected` if `id` is called when `SMPPeer` is not connected to the peer
+   *  server.
+   */
   get id(): string {
+    // TODO: Probably shouldn't throw here, since it's reasonable(and benefitial sometimes) that
+    //  `id` is called even it is not connected to the peer server. E.g. when a `SMPPeer` is
+    //  disconnected from the peer server and is still running `runSMP` with other peers.
     if (this.peer === undefined) {
       throw new ServerUnconnected('need to be connected to a peer server to discover other peers');
     }
     return this.peer.id;
   }
 
+  /**
+   * Connect to the peer server with the infromation in `this.peerServerConfig`. A peer server
+   *  allows us to discover peers and also others to find us. `connectToPeerServer` asynchronously
+   *  waits until the connection to the peer server is established.
+   * @throws `ServerFault` when the peer id we sent mismatches the one returned from the peer
+   *  server.
+   */
   async connectToPeerServer(): Promise<void> {
-    const localPeer = new Peer(this.localPeerID, this.peerConfig);
+    const localPeer = new Peer(this.localPeerID, this.peerServerConfig);
 
     // Emitted when a new data connection is established from a remote peer.
     localPeer.on('connection', (conn: Peer.DataConnection) => {
@@ -75,11 +105,12 @@ class SMPPeer {
     await new Promise((resolve, reject) => {
       // Emitted when a connection to the PeerServer is established.
       localPeer.on('open', (id: string) => {
+        // Sanity check
         // If we expect our PeerID to be `localPeerID` but the peer server returns another one,
         // we should be aware that something is wrong between us and the server.
         if (this.localPeerID !== undefined && id !== this.localPeerID) {
           reject(
-            new Error(
+            new ServerFault(
               'the returned id from the peer server is not the one we expect: ' +
                 `returned=${id}, expected=${this.localPeerID}`,
             ),
@@ -91,6 +122,14 @@ class SMPPeer {
     });
   }
 
+  /**
+   * Run SMP protocol with a peer. Connecting with a peer server is required before calling
+   *  `runSMP`.
+   * @param remotePeerID - The id of the peer.
+   * @throws `ServerUnconnected` when `runSMP` is called without connecting to a peer server.
+   * @returns The result of SMP protocol, i.e. our secret is the same as the secret of the
+   *  remote peer.
+   */
   async runSMP(remotePeerID: string): Promise<boolean> {
     if (this.peer === undefined) {
       throw new ServerUnconnected('need to be connected to a peer server to discover other peers');

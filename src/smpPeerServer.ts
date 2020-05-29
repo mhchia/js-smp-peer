@@ -1,4 +1,4 @@
-import { defaultPeerConfig } from './config';
+import { defaultPeerServerConfig } from './config';
 
 import fs = require('fs');
 import express = require('express');
@@ -15,6 +15,10 @@ const keyPath = `${certDir}/privkey.pem`;
 const certPath = `${certDir}/cert.pem`;
 const errCodeFileNotFound = 'ENOENT';
 
+/**
+ * Run a peer server. `runServer` first try to load SSL a pair of cert and key from `certDir`.
+ *  If it succeeds, the peer server runs with SSL. Otherwise, without SSL.
+ */
 function runServer(): void {
   let isSSLSupported;
   let key;
@@ -56,12 +60,12 @@ function runServer(): void {
   }
 
   // TODO: Confirm this is correct
-  app.use(defaultPeerConfig.path, peerServer);
+  app.use(defaultPeerServerConfig.path, peerServer);
 
   // FIXME: Remove it later when we don't need debugging
   app.use('/', express.static('./demo/'));
 
-  server.listen(defaultPeerConfig.port);
+  server.listen(defaultPeerServerConfig.port);
 
   peerServer.on('connection', (id: string) => {
     console.log(`A client connected : ${id}`);
