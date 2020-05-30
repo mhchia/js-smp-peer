@@ -14,7 +14,7 @@
     "lint": "tsdx lint src test",
     "build": "tsc",
     "bundle": "npx webpack --config webpack.config.js",
-    "release": "npm run build && npm run bundule && git push --tags && npm publish"
+    "release": "npm run build && npm run bundle && git push --tags && npm publish"
   },
   "peerDependencies": {},
   "husky": {
@@ -55,7 +55,7 @@
     "webpack-cli": "^3.3.11"
   },
   "dependencies": {
-    "js-smp": "^0.1.5",
+    "js-smp": "^0.1.7",
     "peerjs": "^1.2.0",
     "peer": "^0.5.3",
     "express": "^4.17.1"
