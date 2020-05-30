@@ -50,7 +50,9 @@ main();
 
 ### Use a custom peer server
 
-By default, `SMPPeer` connects to the server specified in `defaultPeerConfig` in `src/config.ts`. You can connect to other peer servers by specifying a config when initializing `SMPPeer`.
+By default, `SMPPeer` connects to the server specified in `defaultPeerServerConfig` in `src/config.ts`. You can connect to other peer servers by specifying a config when initializing `SMPPeer`.
+
+<!-- TODO: Add default server -->
 
 ```typescript
 const customConfig = {
