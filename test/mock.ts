@@ -42,7 +42,7 @@ type CBPeerOpen = (id: string) => void;
 
 const peers = new Map<string, MockPeer>();
 
-export class MockPeer {
+class MockPeer {
   id: string;
   connectionCB?: CBPeerConnection;
   conns: Map<string, MockDataConnection>;
@@ -53,9 +53,9 @@ export class MockPeer {
     } else {
       this.id = id;
     }
-    peers.set(this.id, this);
-    console.log("MOCKED!");
     this.conns = new Map();
+    peers.set(this.id, this);
+    console.log('MOCKED!');
   }
 
   on(event: string, cb: CBPeerOpen | CBPeerConnection): void {
@@ -71,9 +71,12 @@ export class MockPeer {
   connect(remotePeerID: string, options?: any) {
     const remotePeer = peers.get(remotePeerID);
     if (remotePeer === undefined) {
-      throw new Error(`remotePeer=${remotePeer} is not discovered`)
+      throw new Error(`remotePeer=${remotePeer} is not discovered`);
     }
-    if (this.connectionCB === undefined || remotePeer.connectionCB === undefined) {
+    if (
+      this.connectionCB === undefined ||
+      remotePeer.connectionCB === undefined
+    ) {
       throw new Error("either `localPeer` or `remotePeer` hasn't called `on`");
     }
     const localConn = new MockDataConnection(this.id);
@@ -89,3 +92,12 @@ export class MockPeer {
     return localConn;
   }
 }
+
+class MockPeerWrongID extends MockPeer {
+  constructor(id?: string, options?: any) {
+    super(id, options);
+    this.id = id + '123';
+  }
+}
+
+export { MockPeer, MockPeerWrongID };
