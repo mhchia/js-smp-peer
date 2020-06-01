@@ -47,7 +47,7 @@ describe('connectToPeerServer', () => {
     mockPeerClass = MockPeerWrongID;
 
     const peer = new SMPPeer(secret, pid);
-    await expect(peer.connectToPeerServer()).rejects.toThrow(ServerFault);
+    await expect(peer.connectToPeerServer()).rejects.toThrowError(ServerFault);
   });
 });
 
@@ -66,6 +66,20 @@ describe('runSMP', () => {
       expect(actual).toEqual(expectedResult);
     }
   });
+
+  test('fails when calling `runSMP` before running `connectToPeerServer`', async () => {
+    const alice = new SMPPeer('1', 'A');
+    const bob = new SMPPeer('1', 'B');
+    await bob.connectToPeerServer();
+    await expect(alice.runSMP(bob.id)).rejects.toThrow();
+  });
+
+  test('fails when the remote peer is not on the peer server', async () => {
+    const alice = new SMPPeer('1', 'A');
+    await alice.connectToPeerServer();
+    await expect(alice.runSMP('B')).rejects.toThrow();
+  });
+
 });
 
 async function smp(x: string, y: string) {
