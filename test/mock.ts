@@ -55,7 +55,6 @@ class MockPeer {
     }
     this.conns = new Map();
     peers.set(this.id, this);
-    console.log('MOCKED!');
   }
 
   on(event: string, cb: CBPeerOpen | CBPeerConnection): void {
