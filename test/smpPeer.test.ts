@@ -16,7 +16,7 @@ import { MockPeer, MockPeerWrongID } from './mock';
  * NOTE: a reference to the mock class allows us to chnage the mock class
  *  on the fly.
  */
-let mockPeerClass = MockPeer;
+let mockPeerClass: typeof MockPeer = MockPeer;
 
 function MockCtor(...args: any[]) {
   return new mockPeerClass(...args);
@@ -29,6 +29,10 @@ jest.mock('peerjs', () => {
 beforeEach(() => {
   // Set `MockPeer` as the mock peer class by default.
   mockPeerClass = MockPeer;
+});
+
+afterEach(() => {
+  mockPeerClass.resetPeers();
 });
 
 describe('connectToPeerServer', () => {
