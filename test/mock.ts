@@ -40,9 +40,9 @@ class MockDataConnection {
 type CBPeerConnection = (conn: MockDataConnection) => void;
 type CBPeerOpen = (id: string) => void;
 
-class MockPeer {
-  static peers = new Map<string, MockPeer>();
+const peers = new Map<string, MockPeer>();
 
+class MockPeer {
   id: string;
   connectionCB?: CBPeerConnection;
   conns: Map<string, MockDataConnection>;
@@ -54,7 +54,7 @@ class MockPeer {
       this.id = id;
     }
     this.conns = new Map();
-    MockPeer.peers.set(this.id, this);
+    peers.set(this.id, this);
     console.log('MOCKED!');
   }
 
@@ -69,7 +69,7 @@ class MockPeer {
   }
 
   connect(remotePeerID: string, options?: any) {
-    const remotePeer = MockPeer.peers.get(remotePeerID);
+    const remotePeer = peers.get(remotePeerID);
     if (remotePeer === undefined) {
       throw new Error(`remotePeer=${remotePeer} is not discovered`);
     }
@@ -93,7 +93,7 @@ class MockPeer {
   }
 
   static resetPeers() {
-    MockPeer.peers.clear();
+    peers.clear();
   }
 }
 
