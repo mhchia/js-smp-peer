@@ -15,6 +15,17 @@ class SMPPeerError extends Error {
 }
 
 /**
+ * Thrown when there is something wrong with the peer server.
+ */
+class TimeoutError extends SMPPeerError {
+  constructor(m?: string) {
+    super(m);
+    // Set the prototype explicitly.
+    Object.setPrototypeOf(this, TimeoutError.prototype);
+  }
+}
+
+/**
  * Thrown when we are not connected to the peer server.
  */
 class ServerUnconnected extends SMPPeerError {
@@ -25,6 +36,9 @@ class ServerUnconnected extends SMPPeerError {
   }
 }
 
+/**
+ * Thrown when there is something wrong with the peer server.
+ */
 class ServerFault extends SMPPeerError {
   constructor(m?: string) {
     super(m);
@@ -33,4 +47,4 @@ class ServerFault extends SMPPeerError {
   }
 }
 
-export { SMPPeerError, ServerUnconnected, ServerFault };
+export { SMPPeerError, ServerUnconnected, ServerFault, TimeoutError };

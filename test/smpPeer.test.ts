@@ -8,9 +8,13 @@
 
 import SMPPeer from '../src/smpPeer';
 
-import { ServerFault } from '../src/exceptions';
+import {
+  ServerFault,
+  TimeoutError,
+  ServerUnconnected,
+} from '../src/exceptions';
 
-import { MockPeer, MockPeerWrongID } from './mock';
+import { MockPeer, MockPeerWrongID, MockPeerFakeSend } from './mock';
 
 /**
  * NOTE: a reference to the mock class allows us to chnage the mock class
@@ -71,7 +75,7 @@ describe('runSMP', () => {
     const alice = new SMPPeer('1', 'A');
     const bob = new SMPPeer('1', 'B');
     await bob.connectToPeerServer();
-    await expect(alice.runSMP(bob.id)).rejects.toThrow();
+    await expect(alice.runSMP(bob.id)).rejects.toThrowError(ServerUnconnected);
   });
 
   test('fails when the remote peer is not on the peer server', async () => {
@@ -80,6 +84,18 @@ describe('runSMP', () => {
     await expect(alice.runSMP('B')).rejects.toThrow();
   });
 
+  test('fails when timeout', async () => {
+    // Mock `Peer` with `MockPeerFakeSend`. `runSMP` will timeout because
+    // data is not sent to remote at all.
+    mockPeerClass = MockPeerFakeSend;
+    // A timeout smaller than the default one in jest's test.
+    const timeout = 1;
+    const alice = new SMPPeer('1', 'A', undefined, timeout);
+    await alice.connectToPeerServer();
+    const bob = new SMPPeer('1', 'B', undefined, timeout);
+    await bob.connectToPeerServer();
+    await expect(alice.runSMP(bob.id)).rejects.toThrow(TimeoutError);
+  });
 });
 
 async function smp(x: string, y: string) {

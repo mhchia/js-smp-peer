@@ -4,9 +4,10 @@ import { SMPStateMachine } from 'js-smp';
 import { TLV } from 'js-smp/lib/msgs';
 
 import { defaultPeerServerConfig, TPeerServerConfig } from './config';
-import { ServerUnconnected, ServerFault } from './exceptions';
+import { ServerUnconnected, ServerFault, TimeoutError } from './exceptions';
 
 const timeSleep = 10;
+const defaultTimeout = 30000; // 30 seconds
 
 function createConnDataHandler(
   stateMachine: SMPStateMachine,
@@ -28,13 +29,35 @@ const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
 /**
  * Wait until `SMPStateMachine` is at the finished state.
- * TODO: Add timeout to avoid infinite waiting.
  */
 async function waitUntilStateMachineFinished(
   stateMachine: SMPStateMachine
 ): Promise<void> {
   while (!stateMachine.isFinished()) {
     await sleep(timeSleep);
+  }
+}
+
+async function waitUntilStateMachineFinishedOrTimeout(
+  stateMachine: SMPStateMachine,
+  timeout: number
+): Promise<void> {
+  let timeoutID;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutID = setTimeout(
+      () =>
+        reject(
+          new TimeoutError('state machine is not finished before timeout')
+        ),
+      timeout
+    );
+  });
+  await Promise.race([
+    waitUntilStateMachineFinished(stateMachine),
+    timeoutPromise,
+  ]);
+  if (timeoutID !== undefined) {
+    clearTimeout(timeoutID);
   }
 }
 
@@ -53,7 +76,8 @@ class SMPPeer {
   constructor(
     secret: string,
     readonly localPeerID?: string,
-    readonly peerServerConfig: TPeerServerConfig = defaultPeerServerConfig
+    readonly peerServerConfig: TPeerServerConfig = defaultPeerServerConfig,
+    readonly timeout: number = defaultTimeout
   ) {
     this.secret = secret;
   }
@@ -102,8 +126,15 @@ class SMPPeer {
         // conn.on('error', () => {});
         // Emitted when data is received from the remote peer.
         conn.on('data', createConnDataHandler(stateMachine, conn));
-        // TODO: Add `timeout`
-        await waitUntilStateMachineFinished(stateMachine);
+        try {
+          await waitUntilStateMachineFinishedOrTimeout(
+            stateMachine,
+            this.timeout
+          );
+        } catch (e) {
+          console.log(`${e} is thrown when running SMP with peer=${conn.peer}`);
+          return;
+        }
         console.log(
           `Finished SMP with peer=${
             conn.peer
@@ -159,9 +190,8 @@ class SMPPeer {
       }
       conn.on('data', createConnDataHandler(stateMachine, conn));
       conn.send(firstMsg.serialize());
-      // TODO: Add `timeout`
     });
-    await waitUntilStateMachineFinished(stateMachine);
+    await waitUntilStateMachineFinishedOrTimeout(stateMachine, this.timeout);
     return stateMachine.getResult();
   }
 }
