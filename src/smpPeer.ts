@@ -4,11 +4,15 @@ import { SMPStateMachine } from 'js-smp';
 import { TLV } from 'js-smp/lib/msgs';
 
 import { defaultPeerServerConfig, TPeerServerConfig } from './config';
-import { ServerUnconnected, ServerFault } from './exceptions';
+import { ServerUnconnected, ServerFault, TimeoutError } from './exceptions';
 
 const timeSleep = 10;
+const defaultTimeout = 30000; // 30 seconds
 
-function createConnDataHandler(stateMachine: SMPStateMachine, conn: Peer.DataConnection) {
+function createConnDataHandler(
+  stateMachine: SMPStateMachine,
+  conn: Peer.DataConnection
+) {
   return (data: ArrayBuffer) => {
     const tlv = TLV.deserialize(new Uint8Array(data));
     const replyTLV = stateMachine.transit(tlv);
@@ -25,11 +29,35 @@ const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
 /**
  * Wait until `SMPStateMachine` is at the finished state.
- * TODO: Add timeout to avoid infinite waiting.
  */
-async function waitUntilStateMachineFinished(stateMachine: SMPStateMachine): Promise<void> {
+async function waitUntilStateMachineFinished(
+  stateMachine: SMPStateMachine
+): Promise<void> {
   while (!stateMachine.isFinished()) {
     await sleep(timeSleep);
+  }
+}
+
+async function waitUntilStateMachineFinishedOrTimeout(
+  stateMachine: SMPStateMachine,
+  timeout: number
+): Promise<void> {
+  let timeoutID;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutID = setTimeout(
+      () =>
+        reject(
+          new TimeoutError('state machine is not finished before timeout')
+        ),
+      timeout
+    );
+  });
+  await Promise.race([
+    waitUntilStateMachineFinished(stateMachine),
+    timeoutPromise,
+  ]);
+  if (timeoutID !== undefined) {
+    clearTimeout(timeoutID);
   }
 }
 
@@ -48,8 +76,9 @@ class SMPPeer {
   constructor(
     secret: string,
     readonly localPeerID?: string,
-    readonly peerServerConfig: TPeerServerConfig = defaultPeerServerConfig)
-  {
+    readonly peerServerConfig: TPeerServerConfig = defaultPeerServerConfig,
+    readonly timeout: number = defaultTimeout
+  ) {
     this.secret = secret;
   }
 
@@ -63,7 +92,9 @@ class SMPPeer {
     //  `id` is called even it is not connected to the peer server. E.g. when a `SMPPeer` is
     //  disconnected from the peer server and is still running `runSMP` with other peers.
     if (this.peer === undefined) {
-      throw new ServerUnconnected('need to be connected to a peer server to discover other peers');
+      throw new ServerUnconnected(
+        'need to be connected to a peer server to discover other peers'
+      );
     }
     return this.peer.id;
   }
@@ -95,9 +126,20 @@ class SMPPeer {
         // conn.on('error', () => {});
         // Emitted when data is received from the remote peer.
         conn.on('data', createConnDataHandler(stateMachine, conn));
-        // TODO: Add `timeout`
-        await waitUntilStateMachineFinished(stateMachine);
-        console.log(`Finished SMP with peer=${conn.peer}: result=${stateMachine.getResult()}`);
+        try {
+          await waitUntilStateMachineFinishedOrTimeout(
+            stateMachine,
+            this.timeout
+          );
+        } catch (e) {
+          console.log(`${e} is thrown when running SMP with peer=${conn.peer}`);
+          return;
+        }
+        console.log(
+          `Finished SMP with peer=${
+            conn.peer
+          }: result=${stateMachine.getResult()}`
+        );
         // TODO: Add `close` event
       });
     });
@@ -112,8 +154,8 @@ class SMPPeer {
           reject(
             new ServerFault(
               'the returned id from the peer server is not the one we expect: ' +
-                `returned=${id}, expected=${this.localPeerID}`,
-            ),
+                `returned=${id}, expected=${this.localPeerID}`
+            )
           );
         }
         resolve(id);
@@ -132,7 +174,9 @@ class SMPPeer {
    */
   async runSMP(remotePeerID: string): Promise<boolean> {
     if (this.peer === undefined) {
-      throw new ServerUnconnected('need to be connected to a peer server to discover other peers');
+      throw new ServerUnconnected(
+        'need to be connected to a peer server to discover other peers'
+      );
     }
     const conn = this.peer.connect(remotePeerID, { reliable: true });
     console.log(`Connecting ${remotePeerID}...`);
@@ -146,9 +190,8 @@ class SMPPeer {
       }
       conn.on('data', createConnDataHandler(stateMachine, conn));
       conn.send(firstMsg.serialize());
-      // TODO: Add `timeout`
     });
-    await waitUntilStateMachineFinished(stateMachine);
+    await waitUntilStateMachineFinishedOrTimeout(stateMachine, this.timeout);
     return stateMachine.getResult();
   }
 }

@@ -52,12 +52,12 @@
     "tslib": "^2.0.0",
     "typescript": "^3.9.3",
     "webpack": "^4.43.0",
-    "webpack-cli": "^3.3.11"
+    "webpack-cli": "^3.3.11",
+    "peer": "^0.5.3",
+    "express": "^4.17.1"
   },
   "dependencies": {
     "js-smp": "^0.1.7",
-    "peerjs": "^1.2.0",
-    "peer": "^0.5.3",
-    "express": "^4.17.1"
+    "peerjs": "^1.2.0"
   }
 }
