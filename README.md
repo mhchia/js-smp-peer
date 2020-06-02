@@ -1,3 +1,7 @@
+<p align="center">
+  <a href="https://github.com/actions/checkout"><img alt="GitHub Actions status" src="https://github.com/mhchia/js-smp-peer/workflows/nodejs-test/badge.svg"></a>
+</p>
+
 # js-smp-peer
 
 `js-smp-peer` lets you run [SMP(Socialist Millionaire Problem) Protocol][smp_paper] with other users through network connections. Check out the [wiki page][smp_wiki] to know more about SMP, and also the [paper][smp_paper] to understand the protocol.
