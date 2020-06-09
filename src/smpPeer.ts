@@ -194,6 +194,18 @@ class SMPPeer {
     await waitUntilStateMachineFinishedOrTimeout(stateMachine, this.timeout);
     return stateMachine.getResult();
   }
+
+  /**
+   * Disconnect from the peer server.
+   */
+  disconnect(): void {
+    if (this.peer === undefined) {
+      throw new ServerUnconnected(
+        'need to be connected to a peer server to disconnect'
+      );
+    }
+    this.peer.disconnect();
+  }
 }
 
 export default SMPPeer;
