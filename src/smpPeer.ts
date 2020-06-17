@@ -4,7 +4,12 @@ import { SMPStateMachine } from 'js-smp';
 import { TLV } from 'js-smp/lib/msgs';
 
 import { defaultPeerServerConfig, TPeerServerConfig } from './config';
-import { ServerUnconnected, ServerFault, TimeoutError } from './exceptions';
+import {
+  ServerUnconnected,
+  ServerFault,
+  TimeoutError,
+  EventUnsupported,
+} from './exceptions';
 
 const timeSleep = 10;
 const defaultTimeout = 30000; // 30 seconds
@@ -61,8 +66,26 @@ async function waitUntilStateMachineFinishedOrTimeout(
   }
 }
 
+const eventServerConnected = 'connected';
+const eventServerDisconnected = 'disconnected';
+const eventIncomingSMP = 'incoming';
+
+type TSMPPeerEvent =
+  | typeof eventServerConnected
+  | typeof eventServerDisconnected
+  | typeof eventIncomingSMP;
+
+type TCBServerConnected = () => void;
+type TCBServerDisconnected = () => void;
+type TCBIncomingSMP = (remotePeerID: string, result: boolean) => void;
+type TCBSMPPeer = TCBServerConnected | TCBServerDisconnected | TCBIncomingSMP;
+
 class SMPPeer {
   secret: string;
+
+  cbServerConnected?: TCBServerConnected;
+  cbServerDisconnected?: TCBServerDisconnected;
+  cbIncomingSMP?: TCBIncomingSMP;
 
   private peer?: Peer;
 
@@ -110,6 +133,11 @@ class SMPPeer {
     const localPeer = new Peer(this.localPeerID, this.peerServerConfig);
 
     // Emitted when a new data connection is established from a remote peer.
+    localPeer.on('disconnected', () => {
+      if (this.cbServerDisconnected !== undefined) {
+        this.cbServerDisconnected();
+      }
+    });
     localPeer.on('connection', (conn: Peer.DataConnection) => {
       // A remote peer has connected us!
       console.log(`Received a connection from ${conn.peer}`);
@@ -118,13 +146,6 @@ class SMPPeer {
       // Ref: https://peerjs.com/docs.html#dataconnection
       conn.on('open', async () => {
         const stateMachine = new SMPStateMachine(this.secret);
-
-        // Emitted when either you or the remote peer closes the data connection.
-        // Not supported by Firefox.
-        // conn.on('close', () => {});
-        // Emitted when error occurs.
-        // conn.on('error', () => {});
-        // Emitted when data is received from the remote peer.
         conn.on('data', createConnDataHandler(stateMachine, conn));
         try {
           await waitUntilStateMachineFinishedOrTimeout(
@@ -135,12 +156,11 @@ class SMPPeer {
           console.log(`${e} is thrown when running SMP with peer=${conn.peer}`);
           return;
         }
-        console.log(
-          `Finished SMP with peer=${
-            conn.peer
-          }: result=${stateMachine.getResult()}`
-        );
-        // TODO: Add `close` event
+        const result = stateMachine.getResult();
+        console.log(`Finished SMP with peer=${conn.peer}: result=${result}`);
+        if (this.cbIncomingSMP !== undefined) {
+          this.cbIncomingSMP(conn.peer, result);
+        }
       });
     });
     // Wait until we are connected to the PeerServer
@@ -160,6 +180,9 @@ class SMPPeer {
         }
         resolve(id);
         this.peer = localPeer;
+        if (this.cbServerConnected !== undefined) {
+          this.cbServerConnected();
+        }
       });
     });
   }
@@ -205,6 +228,44 @@ class SMPPeer {
       );
     }
     this.peer.disconnect();
+  }
+
+  /**
+   * Emitted when connected to the peer server.
+   * @param event - Event name
+   * @param cb - Callback function
+   */
+  on(event: typeof eventServerConnected, cb: TCBServerConnected): void;
+
+  /**
+   * Emitted when the connection to the peer server is closed.
+   * @param event - Event name
+   * @param cb - Callback function
+   */
+  on(event: typeof eventServerDisconnected, cb: TCBServerDisconnected): void;
+
+  /**
+   * Emitted when an incoming SMP request is finished.
+   * @param event - Event name
+   * @param cb - Callback function
+   */
+  on(event: typeof eventIncomingSMP, cb: TCBIncomingSMP): void;
+
+  /**
+   * Set callback functions for events.
+   * @param event - Event name
+   * @param cb - Callback function
+   */
+  on(event: TSMPPeerEvent, cb: TCBSMPPeer) {
+    if (event === eventServerConnected) {
+      this.cbServerConnected = cb as TCBServerConnected;
+    } else if (event === eventServerDisconnected) {
+      this.cbServerDisconnected = cb as TCBServerDisconnected;
+    } else if (event === eventIncomingSMP) {
+      this.cbIncomingSMP = cb as TCBIncomingSMP;
+    } else {
+      throw new EventUnsupported(`event unsupported: ${event}`);
+    }
   }
 }
 

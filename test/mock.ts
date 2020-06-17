@@ -9,6 +9,7 @@ class MockDataConnection {
   openCB?: CBDataConnectionOpen;
   dataCB?: CBDataConnectionData;
   remoteConn?: MockDataConnection;
+
   constructor(peerID: string) {
     this.peer = peerID;
   }
@@ -17,8 +18,7 @@ class MockDataConnection {
     if (event === 'open') {
       // TODO: Add type checking here.
       this.openCB = cb as CBDataConnectionOpen;
-      // Handle both sync and async.
-      this.openCB();
+      Promise.resolve(this.openCB()).then((_) => {});
     } else if (event === 'data') {
       this.dataCB = cb as CBDataConnectionData;
     } else {
@@ -45,6 +45,7 @@ class MockDataConnectionFakeSend extends MockDataConnection {
 }
 
 type CBPeerConnection = (conn: MockDataConnection) => void;
+type CBPeerDisconnected = () => void;
 type CBPeerOpen = (id: string) => void;
 
 const peers = new Map<string, MockPeer>();
@@ -52,6 +53,7 @@ const peers = new Map<string, MockPeer>();
 class MockPeer {
   id: string;
   connectionCB?: CBPeerConnection;
+  disconnectedCB?: CBPeerDisconnected;
   conns: Map<string, MockDataConnection>;
   isConnectedToServer: boolean;
 
@@ -72,6 +74,8 @@ class MockPeer {
       this.isConnectedToServer = true;
     } else if (event === 'connection') {
       this.connectionCB = cb as CBPeerConnection;
+    } else if (event === 'disconnected') {
+      this.disconnectedCB = cb as CBPeerDisconnected;
     } else {
       throw Error(`event ${event} is not supported`);
     }
@@ -91,8 +95,8 @@ class MockPeer {
     ) {
       throw new Error("either `localPeer` or `remotePeer` hasn't called `on`");
     }
-    const localConn = new MockDataConnection(this.id);
-    const remoteConn = new MockDataConnection(remotePeerID);
+    const localConn = new MockDataConnection(remotePeerID);
+    const remoteConn = new MockDataConnection(this.id);
     localConn.setRemote(remoteConn);
     remoteConn.setRemote(localConn);
     this.conns.set(remotePeerID, remoteConn);
@@ -102,6 +106,12 @@ class MockPeer {
     remotePeer.connectionCB(remoteConn);
 
     return localConn;
+  }
+
+  disconnect() {
+    if (this.disconnectedCB !== undefined) {
+      this.disconnectedCB();
+    }
   }
 
   static resetPeers() {
@@ -129,8 +139,8 @@ class MockPeerFakeSend extends MockPeer {
       throw new Error("either `localPeer` or `remotePeer` hasn't called `on`");
     }
     // Use `MockDataConnectionFakeSend`, to prevent data from being sent.
-    const localConn = new MockDataConnectionFakeSend(this.id);
-    const remoteConn = new MockDataConnectionFakeSend(remotePeerID);
+    const localConn = new MockDataConnectionFakeSend(remotePeerID);
+    const remoteConn = new MockDataConnectionFakeSend(this.id);
     localConn.setRemote(remoteConn);
     remoteConn.setRemote(localConn);
     this.conns.set(remotePeerID, remoteConn);

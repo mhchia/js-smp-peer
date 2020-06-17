@@ -47,4 +47,21 @@ class ServerFault extends SMPPeerError {
   }
 }
 
-export { SMPPeerError, ServerUnconnected, ServerFault, TimeoutError };
+/**
+ * Thrown when there is something wrong with the peer server.
+ */
+class EventUnsupported extends SMPPeerError {
+  constructor(m?: string) {
+    super(m);
+    // Set the prototype explicitly.
+    Object.setPrototypeOf(this, EventUnsupported.prototype);
+  }
+}
+
+export {
+  SMPPeerError,
+  ServerUnconnected,
+  ServerFault,
+  TimeoutError,
+  EventUnsupported,
+};

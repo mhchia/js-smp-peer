@@ -42,9 +42,16 @@ afterEach(() => {
 describe('connectToPeerServer', () => {
   const secret = '123';
   const pid = 'pid';
+
   test('succeeds', async () => {
     const peer = new SMPPeer(secret, pid);
+    // Register callbacks
+    let isConnectedCalled = false;
+    peer.on('connected', () => {
+      isConnectedCalled = true;
+    });
     await peer.connectToPeerServer();
+    expect(isConnectedCalled).toBeTruthy();
   });
 
   test('fails when the peer server returns a different peer id', async () => {
@@ -52,6 +59,24 @@ describe('connectToPeerServer', () => {
 
     const peer = new SMPPeer(secret, pid);
     await expect(peer.connectToPeerServer()).rejects.toThrowError(ServerFault);
+  });
+});
+
+describe('disconnect', () => {
+  const secret = '123';
+  const pid = 'pid';
+
+  test('succeeds', async () => {
+    const peer = new SMPPeer(secret, pid);
+    // Register callbacks
+    let isDisconnectedCalled = false;
+    peer.on('disconnected', () => {
+      isDisconnectedCalled = true;
+    });
+    await peer.connectToPeerServer();
+    expect(isDisconnectedCalled).toBeFalsy();
+    peer.disconnect();
+    expect(isDisconnectedCalled).toBeTruthy();
   });
 });
 
@@ -69,6 +94,38 @@ describe('runSMP', () => {
       const actual = await smp(param[0], param[1]);
       expect(actual).toEqual(expectedResult);
     }
+  });
+
+  test('incoming callback', async () => {
+    let isAliceCalled = false;
+    let isBobCalled = false;
+    const peerIDA = 'A';
+    const peerIDB = 'B';
+    const alice = new SMPPeer('1', peerIDA);
+    const bob = new SMPPeer('1', peerIDB);
+
+    alice.on('incoming', (_, __) => {
+      isAliceCalled = true;
+    });
+
+    let resolve: any;
+    const eventCalled = new Promise((res) => {
+      resolve = res;
+    });
+    bob.on('incoming', (_, __) => {
+      isBobCalled = true;
+      resolve();
+    });
+
+    await alice.connectToPeerServer();
+    await bob.connectToPeerServer();
+
+    await alice.runSMP(peerIDB);
+    await eventCalled;
+
+    // Because it is Alice initiating SMP to Bob, there should only be Bob's callback getting called.
+    expect(isAliceCalled).toBeFalsy();
+    expect(isBobCalled).toBeTruthy();
   });
 
   test('fails when calling `runSMP` before running `connectToPeerServer`', async () => {
