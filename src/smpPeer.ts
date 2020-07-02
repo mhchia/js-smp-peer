@@ -166,7 +166,9 @@ class SMPPeer {
             this.timeout
           );
         } catch (e) {
-          console.error(`${e} is thrown when running SMP with peer=${conn.peer}`);
+          console.error(
+            `${e} is thrown when running SMP with peer=${conn.peer}`
+          );
           return;
         }
         const result = stateMachine.getResult();
