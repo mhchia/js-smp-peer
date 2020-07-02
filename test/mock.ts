@@ -47,6 +47,7 @@ class MockDataConnectionFakeSend extends MockDataConnection {
 type CBPeerConnection = (conn: MockDataConnection) => void;
 type CBPeerDisconnected = () => void;
 type CBPeerOpen = (id: string) => void;
+type CBError = (error: string) => void;
 
 const peers = new Map<string, MockPeer>();
 
@@ -54,6 +55,7 @@ class MockPeer {
   id: string;
   connectionCB?: CBPeerConnection;
   disconnectedCB?: CBPeerDisconnected;
+  errorCB?: CBError;
   conns: Map<string, MockDataConnection>;
   isConnectedToServer: boolean;
 
@@ -68,7 +70,7 @@ class MockPeer {
     this.isConnectedToServer = false;
   }
 
-  on(event: string, cb: CBPeerOpen | CBPeerConnection): void {
+  on(event: string, cb: CBPeerOpen | CBPeerConnection | CBError): void {
     if (event === 'open') {
       (cb as CBPeerOpen)(this.id);
       this.isConnectedToServer = true;
@@ -76,6 +78,8 @@ class MockPeer {
       this.connectionCB = cb as CBPeerConnection;
     } else if (event === 'disconnected') {
       this.disconnectedCB = cb as CBPeerDisconnected;
+    } else if (event === 'error') {
+      this.errorCB = cb as CBError;
     } else {
       throw Error(`event ${event} is not supported`);
     }
@@ -153,4 +157,22 @@ class MockPeerFakeSend extends MockPeer {
   }
 }
 
-export { MockPeer, MockPeerWrongID, MockPeerFakeSend };
+class MockPeerErrorWhenRegiser extends MockPeer {
+  on(event: string, cb: CBPeerOpen | CBPeerConnection | CBError): void {
+    super.on(event, cb);
+    if (event === 'error') {
+      // Emit errors immediately if event == 'error'.
+      if (this.errorCB === undefined) {
+        throw new Error('`errorCB` should have been registered');
+      }
+      this.errorCB('ERROR!');
+    }
+  }
+}
+
+export {
+  MockPeer,
+  MockPeerWrongID,
+  MockPeerFakeSend,
+  MockPeerErrorWhenRegiser,
+};
