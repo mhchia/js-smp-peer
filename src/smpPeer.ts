@@ -153,7 +153,7 @@ class SMPPeer {
     });
     localPeer.on('connection', (conn: Peer.DataConnection) => {
       // A remote peer has connected us!
-      console.log(`Received a connection from ${conn.peer}`);
+      console.debug(`Received a connection from ${conn.peer}`);
 
       // Emitted when the connection is established and ready-to-use.
       // Ref: https://peerjs.com/docs.html#dataconnection
@@ -166,11 +166,11 @@ class SMPPeer {
             this.timeout
           );
         } catch (e) {
-          console.log(`${e} is thrown when running SMP with peer=${conn.peer}`);
+          console.error(`${e} is thrown when running SMP with peer=${conn.peer}`);
           return;
         }
         const result = stateMachine.getResult();
-        console.log(`Finished SMP with peer=${conn.peer}: result=${result}`);
+        console.debug(`Finished SMP with peer=${conn.peer}: result=${result}`);
         if (this.cbIncomingSMP !== undefined) {
           this.cbIncomingSMP(conn.peer, result);
         }
@@ -215,10 +215,10 @@ class SMPPeer {
       );
     }
     const conn = this.peer.connect(remotePeerID, { reliable: true });
-    console.log(`Connecting ${remotePeerID}...`);
+    console.debug(`Connecting ${remotePeerID}...`);
     const stateMachine = new SMPStateMachine(this.secret);
     conn.on('open', async () => {
-      console.log(`Connection to ${conn.peer} is ready.`);
+      console.debug(`Connection to ${conn.peer} is ready.`);
       const firstMsg = stateMachine.transit(null);
       // Sanity check
       if (firstMsg === null) {
