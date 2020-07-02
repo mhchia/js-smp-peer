@@ -54,7 +54,7 @@
     "webpack-cli": "^3.3.11"
   },
   "dependencies": {
-    "js-smp": "^0.1.7",
+    "js-smp": "^0.1.8",
     "peerjs": "^1.2.0"
   }
 }
