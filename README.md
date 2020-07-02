@@ -52,11 +52,17 @@ async function main() {
 main();
 ```
 
+### Default peer server
+
+By default, `SMPPeer` connects to the server specified in `defaultPeerServerConfig` in `src/config.ts`. The current default peer server at `peekabookpeerserver.mhchia.com:8000` is run with the following command. The command `peerjs` can be installed with `npm install peer -g`.
+
+```bash
+npx peerjs --port 8000 --key peerjs --sslkey ./certs/privkey.pem --sslcert certs/cert.pem --path /myapp --allow_discovery
+```
+
 ### Use a custom peer server
 
-By default, `SMPPeer` connects to the server specified in `defaultPeerServerConfig` in `src/config.ts`. You can connect to other peer servers by specifying a config when initializing `SMPPeer`.
-
-<!-- TODO: Add default server -->
+You can connect to other peer servers by specifying a config when initializing `SMPPeer`.
 
 ```typescript
 const customConfig = {
