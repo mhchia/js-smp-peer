@@ -68,23 +68,31 @@ async function waitUntilStateMachineFinishedOrTimeout(
 
 const eventServerConnected = 'connected';
 const eventServerDisconnected = 'disconnected';
+const eventError = 'error';
 const eventIncomingSMP = 'incoming';
 
 type TSMPPeerEvent =
   | typeof eventServerConnected
   | typeof eventServerDisconnected
+  | typeof eventError
   | typeof eventIncomingSMP;
 
 type TCBServerConnected = () => void;
 type TCBServerDisconnected = () => void;
+type TCBError = (error: string) => void;
 type TCBIncomingSMP = (remotePeerID: string, result: boolean) => void;
-type TCBSMPPeer = TCBServerConnected | TCBServerDisconnected | TCBIncomingSMP;
+type TCBSMPPeer =
+  | TCBServerConnected
+  | TCBServerDisconnected
+  | TCBError
+  | TCBIncomingSMP;
 
 class SMPPeer {
   secret: string;
 
   cbServerConnected?: TCBServerConnected;
   cbServerDisconnected?: TCBServerDisconnected;
+  cbError?: TCBError;
   cbIncomingSMP?: TCBIncomingSMP;
 
   private peer?: Peer;
@@ -136,6 +144,11 @@ class SMPPeer {
     localPeer.on('disconnected', () => {
       if (this.cbServerDisconnected !== undefined) {
         this.cbServerDisconnected();
+      }
+    });
+    localPeer.on('error', (error: string) => {
+      if (this.cbError !== undefined) {
+        this.cbError(error);
       }
     });
     localPeer.on('connection', (conn: Peer.DataConnection) => {
@@ -245,6 +258,13 @@ class SMPPeer {
   on(event: typeof eventServerDisconnected, cb: TCBServerDisconnected): void;
 
   /**
+   * Emitted when an error occurs in networking.
+   * @param event - Event name
+   * @param cb - Callback function
+   */
+  on(event: typeof eventError, cb: TCBError): void;
+
+  /**
    * Emitted when an incoming SMP request is finished.
    * @param event - Event name
    * @param cb - Callback function
@@ -263,6 +283,8 @@ class SMPPeer {
       this.cbServerDisconnected = cb as TCBServerDisconnected;
     } else if (event === eventIncomingSMP) {
       this.cbIncomingSMP = cb as TCBIncomingSMP;
+    } else if (event === eventError) {
+      this.cbError = cb as TCBError;
     } else {
       throw new EventUnsupported(`event unsupported: ${event}`);
     }

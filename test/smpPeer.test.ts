@@ -14,7 +14,12 @@ import {
   ServerUnconnected,
 } from '../src/exceptions';
 
-import { MockPeer, MockPeerWrongID, MockPeerFakeSend } from './mock';
+import {
+  MockPeer,
+  MockPeerWrongID,
+  MockPeerFakeSend,
+  MockPeerErrorWhenRegiser,
+} from './mock';
 
 /**
  * NOTE: a reference to the mock class allows us to chnage the mock class
@@ -59,6 +64,23 @@ describe('connectToPeerServer', () => {
 
     const peer = new SMPPeer(secret, pid);
     await expect(peer.connectToPeerServer()).rejects.toThrowError(ServerFault);
+  });
+});
+
+describe('error callback', () => {
+  const secret = '123';
+  const pid = 'pid';
+
+  test('An error is emitted when peerjs does so', async () => {
+    mockPeerClass = MockPeerErrorWhenRegiser;
+
+    const peer = new SMPPeer(secret, pid);
+    let isErrorCalled = false;
+    peer.on('error', (error: string) => {
+      isErrorCalled = true;
+    });
+    await peer.connectToPeerServer();
+    expect(isErrorCalled).toBeTruthy();
   });
 });
 
